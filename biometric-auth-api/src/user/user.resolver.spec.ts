@@ -3,70 +3,132 @@ import { UserResolver } from './user.resolver';
 import { RegistrationService } from './UserRegistration.service';
 import { LoginService } from './UserLogin.service';
 import { BiometricLoginService } from './UserBiometricLogin.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserInput } from './dto/create-user.input';
-
-jest.mock('@prisma/client', () => {
-  return {
-    PrismaClient: jest.fn().mockImplementation(() => ({
-      user: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-      },
-    })),
-  };
-});
-
-jest.mock('bcrypt', () => ({
-  hash: jest.fn().mockResolvedValue('hashed-password'),
-}));
+import { LoginInput } from './dto/login.input';
+import { BiometricLoginInput } from './dto/biometric-login.input';
+import { UserResponse } from './dto/user.response';
+import * as bcrypt from 'bcrypt';
 
 describe('UserResolver', () => {
   let resolver: UserResolver;
   let registrationService: RegistrationService;
+  let loginService: LoginService;
+  let biometricLoginService: BiometricLoginService;
 
   beforeEach(async () => {
-    const prisma = new PrismaClient() as jest.Mocked<PrismaClient>;
-    const jwtService = { sign: jest.fn().mockReturnValue('mocked-jwt-token') } as any;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserResolver,
-        RegistrationService,
-        LoginService,
-        BiometricLoginService,
-        { provide: PrismaClient, useValue: prisma },
-        { provide: JwtService, useValue: jwtService },
+        {
+          provide: RegistrationService,
+          useValue: {
+            registerUser: jest.fn(),
+          },
+        },
+        {
+          provide: LoginService,
+          useValue: {
+            loginUser: jest.fn(),
+          },
+        },
+        {
+          provide: BiometricLoginService,
+          useValue: {
+            biometricLogin: jest.fn(),
+          },
+        },
+        PrismaService, // Not used directly in resolver, but included for dependency tree
+        JwtService, // Not used directly in resolver, but included for dependency tree
       ],
     }).compile();
 
     resolver = module.get<UserResolver>(UserResolver);
     registrationService = module.get<RegistrationService>(RegistrationService);
+    loginService = module.get<LoginService>(LoginService);
+    biometricLoginService = module.get<BiometricLoginService>(BiometricLoginService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
     expect(resolver).toBeDefined();
   });
 
-  it('should register a user and return the result', async () => {
-    const input: CreateUserInput = { email: 'ajaditaoreed@gmail.com', password: 'password123' };
-    const expectedResult = {
-      message: 'User registered successfully',
-      user: {
-        id: '1',
-        email: 'ajaditaoreed@gmail.com',
-        biometricKey: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    };
+  describe('register', () => {
+    it('should call RegistrationService.registerUser and return the result', async () => {
+      const input: CreateUserInput = { email: 'test@example.com', password: 'password123' };
+      const result: UserResponse = {
+        message: 'User registered successfully',
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          password: 'hashedPassword',
+          biometricKey: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      };
 
-    jest.spyOn(registrationService, 'registerUser').mockResolvedValue(expectedResult);
+      jest.spyOn(registrationService, 'registerUser').mockResolvedValue(result);
 
-    const result = await resolver.register(input);
+      const response = await resolver.register(input);
 
-    expect(registrationService.registerUser).toHaveBeenCalledWith(input);
-    expect(result).toEqual(expectedResult);
+      expect(response).toEqual(result);
+      expect(registrationService.registerUser).toHaveBeenCalledWith(input);
+    });
+  });
+
+  describe('login', () => {
+    it('should call LoginService.loginUser and return the result', async () => {
+      const input: LoginInput = { email: 'test@example.com', password: 'password123' };
+      const result: UserResponse = {
+        message: 'Login successful',
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          password: await bcrypt.hash('password123', 10),
+          biometricKey: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        token: 'jwt-token',
+      };
+
+      jest.spyOn(loginService, 'loginUser').mockResolvedValue(result);
+
+      const response = await resolver.login(input);
+
+      expect(response).toEqual(result);
+      expect(loginService.loginUser).toHaveBeenCalledWith(input);
+    });
+  });
+
+  describe('biometricLogin', () => {
+    it('should call BiometricLoginService.biometricLogin and return the result', async () => {
+      const input: BiometricLoginInput = { biometricKey: 'valid-key' };
+      const result: UserResponse = {
+        message: 'Biometric login successful',
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          password: 'hashedPassword',
+          biometricKey: 'valid-key',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        token: 'jwt-token',
+      };
+
+      jest.spyOn(biometricLoginService, 'biometricLogin').mockResolvedValue(result);
+
+      const response = await resolver.biometricLogin(input);
+
+      expect(response).toEqual(result);
+      expect(biometricLoginService.biometricLogin).toHaveBeenCalledWith(input);
+    });
   });
 });

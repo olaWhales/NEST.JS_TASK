@@ -1,108 +1,82 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RegistrationService } from './UserRegistration.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserInput } from './dto/create-user.input';
+import { UserResponse } from './dto/user.response';
+import * as bcrypt from 'bcrypt';
 
-jest.mock('@prisma/client', () => {
-  return {
-    PrismaClient: jest.fn().mockImplementation(() => ({
-      user: {
-        create: jest.fn(),
-      },
-    })),
-  };
-});
-
+// Mock the bcrypt module
 jest.mock('bcrypt', () => ({
-  hash: jest.fn().mockResolvedValue('hashed-password'),
+  hash: jest.fn(),
 }));
 
 describe('RegistrationService', () => {
-  let service: RegistrationService;
-  let prisma: jest.Mocked<PrismaClient>;
+  let registrationService: RegistrationService;
+  let prismaService: PrismaService;
 
   beforeEach(async () => {
-    prisma = new PrismaClient() as jest.Mocked<PrismaClient>;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RegistrationService,
-        { provide: PrismaClient, useValue: prisma },
+        {
+          provide: PrismaService,
+          useValue: {
+            user: {
+              findUnique: jest.fn(),
+              create: jest.fn(),
+            },
+          },
+        },
       ],
     }).compile();
 
-    service = module.get<RegistrationService>(RegistrationService);
+    registrationService = module.get<RegistrationService>(RegistrationService);
+    prismaService = module.get<PrismaService>(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
-    expect(service).toBeDefined();
+    expect(registrationService).toBeDefined();
   });
 
   it('should register a user and return a success message', async () => {
-    const mockUser = { id: '1', email: 'ajaditaoreed@gmail.com', createdAt: new Date(), updatedAt: new Date() };
-    (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
+    const input: CreateUserInput = { email: 'newuser@example.com', password: 'password123' };
+    const hashedPassword = 'hashedPassword';
+    const user = {
+      id: '1',
+      email: input.email,
+      password: hashedPassword,
+      biometricKey: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-    const input: CreateUserInput = { email: 'ajaditaoreed@gmail.com', password: 'password123' };
-    const result = await service.registerUser(input);
+    jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null); // No existing user
+    (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+    jest.spyOn(prismaService.user, 'create').mockResolvedValue(user);
 
-    expect(prisma.user.create).toHaveBeenCalledWith({
-      data: { email: 'ajaditaoreed@gmail.com', password: 'hashed-password' },
-    });
-    expect(result).toEqual({
-      message: 'User registered successfully',
-      user: { id: '1', email: 'ajaditaoreed@gmail.com', createdAt: mockUser.createdAt, updatedAt: mockUser.updatedAt },
+    const result = await registrationService.registerUser(input);
+
+    expect(result.message).toBe('User registered successfully');
+    expect(result.user).toEqual(user);
+    expect(prismaService.user.findUnique).toHaveBeenCalledWith({ where: { email: input.email } });
+    expect(bcrypt.hash).toHaveBeenCalledWith(input.password, 10);
+    expect(prismaService.user.create).toHaveBeenCalledWith({
+      data: {
+        email: input.email,
+        password: hashedPassword,
+      },
     });
   });
 
   it('should throw an error if user creation fails', async () => {
-    (prisma.user.create as jest.Mock).mockResolvedValue(null);
+    const input: CreateUserInput = { email: 'test@example.com', password: 'password123' };
 
-    const input: CreateUserInput = { email: 'ajaditaoreed@gmail.com', password: 'password123' };
-    await expect(service.registerUser(input)).rejects.toThrow('User creation failed');
-  });
-});
+    jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ id: '1', email: 'test@example.com' } as any);
 
-describe('register', () => {
-  let service: RegistrationService;
-
-  beforeEach(async () => {
-    const prisma = new PrismaClient() as jest.Mocked<PrismaClient>;
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RegistrationService,
-        { provide: PrismaClient, useValue: prisma },
-      ],
-    }).compile();
-
-    service = module.get<RegistrationService>(RegistrationService);
-  });
-
-  it('should call RegistrationService.registerUser and return the result', async () => {
-    const input: CreateUserInput = { email: 'ajaditaoreed@gmail.com', password: 'password123' };
-    const expectedResult = {
-      message: 'User registered successfully',
-      user: {
-        id: '1',
-        email: 'ajaditaoreed@gmail.com',
-        biometricKey: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    };
-
-    // Define resolver to call service.registerUser
-    const resolver = {
-      register: async (data: CreateUserInput) => {
-        return await service.registerUser(data); 
-      },
-    };
-
-    // Spy on the method and mock its return value
-    const registerSpy = jest.spyOn(service, 'registerUser').mockResolvedValue(expectedResult);
-
-    const result = await resolver.register(input);
-
-    expect(registerSpy).toHaveBeenCalledWith(input); // Use the spy variable
-    expect(result).toEqual(expectedResult);
+    await expect(registrationService.registerUser(input)).rejects.toThrow('Email already exists');
   });
 });

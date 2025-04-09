@@ -1,99 +1,86 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoginService } from './UserLogin.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException } from '@nestjs/common';
+import { LoginInput } from './dto/login.input';
+import { UserResponse } from './dto/user.response';
 import * as bcrypt from 'bcrypt';
-import { LoginUserInput } from './dto/login-user.input';
 
-jest.mock('@prisma/client', () => {
-  return {
-    PrismaClient: jest.fn().mockImplementation(() => ({
-      user: {
-        findUnique: jest.fn(),
-      },
-    })),
-  };
-});
-
+// Mock the bcrypt module
 jest.mock('bcrypt', () => ({
-  hash: jest.fn(),
-  compare: jest.fn().mockResolvedValue(true),
+  compare: jest.fn(),
 }));
 
 describe('LoginService', () => {
-  let service: LoginService;
-  let prisma: jest.Mocked<PrismaClient>;
+  let loginService: LoginService;
+  let prismaService: PrismaService;
   let jwtService: JwtService;
 
   beforeEach(async () => {
-    prisma = new PrismaClient() as jest.Mocked<PrismaClient>;
-
-    jwtService = {
-      sign: jest.fn().mockReturnValue('mocked-jwt-token'),
-    } as any;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LoginService,
-        { provide: PrismaClient, useValue: prisma },
-        { provide: JwtService, useValue: jwtService },
+        {
+          provide: PrismaService,
+          useValue: {
+            user: {
+              findUnique: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
-    service = module.get<LoginService>(LoginService);
+    loginService = module.get<LoginService>(LoginService);
+    prismaService = module.get<PrismaService>(PrismaService);
+    jwtService = module.get<JwtService>(JwtService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
-    expect(service).toBeDefined();
+    expect(loginService).toBeDefined();
   });
 
-  it('should login a user and return a token', async () => {
-    const mockUser = {
+  it('should login a user with valid credentials', async () => {
+    const input: LoginInput = { email: 'test@example.com', password: 'password123' };
+    const user = {
       id: '1',
-      email: 'ajaditaoreed@gmail.com',
-      password: 'hashedPassword123',
-      biometricKey: null, // Prisma returns null
+      email: input.email,
+      password: 'hashedPassword',
+      biometricKey: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+    const token = 'jwt-token';
 
-    const input: LoginUserInput = { email: 'ajaditaoreed@gmail.com', password: 'password123' };
-    const result = await service.loginUser(input);
+    jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(user);
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+    jest.spyOn(jwtService, 'sign').mockReturnValue(token);
 
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: 'ajaditaoreed@gmail.com' } });
-    expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashedPassword123');
-    expect(jwtService.sign).toHaveBeenCalledWith({ userId: '1' });
-    expect(result).toEqual({
-      token: 'mocked-jwt-token',
-      user: {
-        id: '1',
-        email: 'ajaditaoreed@gmail.com',
-        biometricKey: undefined, // Expect undefined due to ?? undefined in service
-        createdAt: mockUser.createdAt,
-        updatedAt: mockUser.updatedAt,
-      },
-    });
+    const result = await loginService.loginUser(input);
+
+    expect(result.message).toBe('Login successful');
+    expect(result.user).toEqual(user);
+    expect(result.token).toBe(token);
+    expect(prismaService.user.findUnique).toHaveBeenCalledWith({ where: { email: input.email } });
+    expect(bcrypt.compare).toHaveBeenCalledWith(input.password, user.password);
+    expect(jwtService.sign).toHaveBeenCalledWith({ userId: user.id, email: user.email });
   });
 
-  it('should throw an error if credentials are invalid', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+  it('should throw an error with invalid credentials', async () => {
+    const input: LoginInput = { email: 'test@example.com', password: 'wrongpassword' };
 
-    const input: LoginUserInput = { email: 'ajaditaoreed@gmail.com', password: 'password123' };
-    await expect(service.loginUser(input)).rejects.toThrow(UnauthorizedException);
-  });
+    jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null);
 
-  it('should throw an error if the password is incorrect', async () => {
-    const mockUser = {
-      id: '1',
-      email: 'ajaditaoreed@gmail.com',
-      password: await bcrypt.hash('password123', 10),
-    };
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
-    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-
-    const input: LoginUserInput = { email: 'ajaditaoreed@gmail.com', password: 'wrongpassword' };
-    await expect(service.loginUser(input)).rejects.toThrow(UnauthorizedException);
+    await expect(loginService.loginUser(input)).rejects.toThrow('Invalid credentials');
   });
 });

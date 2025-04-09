@@ -1,21 +1,23 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service'; // Import PrismaService
-import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { AuthPayload } from './dto/auth-payload.dto';
-import { LoginUserInput } from './dto/login-user.input';
+import { LoginInput } from './dto/login.input';
+import { UserResponse } from './dto/user.response';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class LoginService {
   constructor(
-    private readonly prisma: PrismaService, // Inject PrismaService
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
-  async loginUser(data: LoginUserInput): Promise<AuthPayload> {
-    const { email, password } = data;
+  async loginUser(input: LoginInput): Promise<UserResponse> {
+    const { email, password } = input;
 
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -25,16 +27,12 @@ export class LoginService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({ userId: user.id });
+    const token = this.jwtService.sign({ userId: user.id, email: user.email });
+
     return {
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        biometricKey: user.biometricKey ?? undefined,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      message: 'Login successful',
+      user,
+      token, // This should now be valid
     };
   }
 }

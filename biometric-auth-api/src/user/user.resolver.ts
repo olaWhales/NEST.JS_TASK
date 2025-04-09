@@ -3,7 +3,9 @@ import { RegistrationService } from './UserRegistration.service';
 import { LoginService } from './UserLogin.service';
 import { BiometricLoginService } from './UserBiometricLogin.service';
 import { CreateUserInput } from './dto/create-user.input';
-import { UserResponse } from './dto/user.response'; // Use existing file
+import { LoginInput } from './dto/login.input'; // Import the new DTO
+import { BiometricLoginInput } from './dto/biometric-login.input'; // Import the new DTO
+import { UserResponse } from './dto/user.response';
 
 @Resolver()
 export class UserResolver {
@@ -13,10 +15,18 @@ export class UserResolver {
     private readonly biometricLoginService: BiometricLoginService,
   ) {}
 
-  @Mutation(() => UserResponse) // Use UserResponse
+  @Mutation(() => UserResponse)
   async register(@Args('input') input: CreateUserInput) {
     return this.registrationService.registerUser(input);
   }
 
-  // Add other methods (e.g., login, biometricLogin) as needed
+  @Mutation(() => UserResponse)
+  async login(@Args('input') input: LoginInput) {
+    return this.loginService.loginUser(input);
+  }
+
+  @Mutation(() => UserResponse)
+  async biometricLogin(@Args('input') input: BiometricLoginInput) {
+    return this.biometricLoginService.biometricLogin(input);
+  }
 }

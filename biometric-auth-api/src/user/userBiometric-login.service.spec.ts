@@ -1,63 +1,78 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiometricLoginService } from './UserBiometricLogin.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException } from '@nestjs/common';
-import { BiometricLoginInput } from './dto/biometric-login.input'; // Import BiometricLoginInput
-
-jest.mock('@prisma/client', () => {
-  return {
-    PrismaClient: jest.fn().mockImplementation(() => ({
-      user: {
-        findUnique: jest.fn(),
-      },
-    })),
-  };
-});
+import { BiometricLoginInput } from './dto/biometric-login.input';
+import { UserResponse } from './dto/user.response';
 
 describe('BiometricLoginService', () => {
-  let service: BiometricLoginService;
-  let prisma: jest.Mocked<PrismaClient>;
+  let biometricLoginService: BiometricLoginService;
+  let prismaService: PrismaService;
   let jwtService: JwtService;
 
   beforeEach(async () => {
-    prisma = new PrismaClient() as jest.Mocked<PrismaClient>;
-
-    jwtService = {
-      sign: jest.fn().mockReturnValue('mocked-jwt-token'),
-    } as any;
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BiometricLoginService,
-        { provide: PrismaClient, useValue: prisma },
-        { provide: JwtService, useValue: jwtService },
+        {
+          provide: PrismaService,
+          useValue: {
+            user: {
+              findFirst: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
-    service = module.get<BiometricLoginService>(BiometricLoginService);
+    biometricLoginService = module.get<BiometricLoginService>(BiometricLoginService);
+    prismaService = module.get<PrismaService>(PrismaService);
+    jwtService = module.get<JwtService>(JwtService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
-    expect(service).toBeDefined();
+    expect(biometricLoginService).toBeDefined();
   });
 
-  it('should login a user using biometric key and return a token', async () => {
-    const mockUser = { id: '1', email: 'test@example.com', biometricKey: 'valid-key' };
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
-
+  it('should login a user with a valid biometric key', async () => {
     const input: BiometricLoginInput = { biometricKey: 'valid-key' };
-    const result = await service.biometricLogin(input);
+    const user = {
+      id: '1',
+      email: 'test@example.com',
+      password: 'hashedPassword',
+      biometricKey: input.biometricKey,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const token = 'jwt-token';
 
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { biometricKey: 'valid-key' } });
-    expect(jwtService.sign).toHaveBeenCalledWith({ userId: '1' });
-    expect(result).toEqual({ token: 'mocked-jwt-token', user: mockUser });
+    jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(user);
+    jest.spyOn(jwtService, 'sign').mockReturnValue(token);
+
+    const result = await biometricLoginService.biometricLogin(input);
+
+    expect(result.message).toBe('Biometric login successful');
+    expect(result.user).toEqual(user);
+    expect(result.token).toBe(token);
+    expect(prismaService.user.findFirst).toHaveBeenCalledWith({ where: { biometricKey: input.biometricKey } });
+    expect(jwtService.sign).toHaveBeenCalledWith({ userId: user.id, email: user.email });
   });
 
-  it('should throw an error if biometric key is invalid', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
-
+  it('should throw an error with an invalid biometric key', async () => {
     const input: BiometricLoginInput = { biometricKey: 'invalid-key' };
-    await expect(service.biometricLogin(input)).rejects.toThrow(UnauthorizedException);
+
+    jest.spyOn(prismaService.user, 'findFirst').mockResolvedValue(null);
+
+    await expect(biometricLoginService.biometricLogin(input)).rejects.toThrow('Invalid biometric key');
   });
 });

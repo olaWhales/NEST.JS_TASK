@@ -1,39 +1,32 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service'; // Import PrismaService
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { BiometricLoginInput } from './dto/biometric-login.input';
-import { AuthPayload } from './dto/auth-payload.dto'; // Import AuthPayload
+import { UserResponse } from './dto/user.response';
 
 @Injectable()
 export class BiometricLoginService {
   constructor(
-    private readonly prisma: PrismaService, // Inject PrismaService
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
-  async biometricLogin(data: BiometricLoginInput): Promise<AuthPayload> {
-    const user = await this.prisma.user.findUnique({
-      where: { biometricKey: data.biometricKey },
-    });
+  async biometricLogin(input: BiometricLoginInput): Promise<UserResponse> {
+    const { biometricKey } = input;
 
+    const user = await this.prisma.user.findFirst({
+      where: { biometricKey },
+    });
     if (!user) {
       throw new UnauthorizedException('Invalid biometric key');
     }
 
-    const token = this.jwtService.sign({ userId: user.id });
-
-    // Exclude password from the user object
-    const { password: _, ...userWithoutPassword } = user;
+    const token = this.jwtService.sign({ userId: user.id, email: user.email });
 
     return {
+      message: 'Biometric login successful',
+      user,
       token,
-      user: {
-        id: userWithoutPassword.id,
-        email: userWithoutPassword.email,
-        biometricKey: userWithoutPassword.biometricKey ?? undefined,
-        createdAt: userWithoutPassword.createdAt,
-        updatedAt: userWithoutPassword.updatedAt,
-      },
     };
   }
 }
