@@ -16,8 +16,8 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
-type AuthPayload {
-  token: String!
+type UserResponse {
+  message: String!
   user: UserType!
 }
 
@@ -26,18 +26,7 @@ type Query {
 }
 
 type Mutation {
-  login(data: LoginUserInput!): AuthPayload!
-  biometricLogin(data: BiometricLoginInput!): AuthPayload!
-  register(data: CreateUserInput!): AuthPayload!
-}
-
-input LoginUserInput {
-  email: String!
-  password: String!
-}
-
-input BiometricLoginInput {
-  biometricKey: String!
+  register(input: CreateUserInput!): UserResponse!
 }
 
 input CreateUserInput {

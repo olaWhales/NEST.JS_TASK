@@ -1,19 +1,11 @@
-// import { ObjectType, Field } from '@nestjs/graphql';
+import { ObjectType, Field } from '@nestjs/graphql';
+import { UserType } from './user.type';
 
-// @ObjectType()
-// export class UserResponse {
-//   @Field()
-//   id: string;
+@ObjectType()
+export class UserResponse {
+  @Field(() => String)
+  message!: string;
 
-//   @Field()
-//   email: string;
-
-//   @Field({ nullable: true })
-//   biometricKey?: string;
-
-//   @Field()
-//   createdAt: Date;
-
-//   @Field()
-//   updatedAt: Date;
-// }
+  @Field(() => UserType)
+  user!: UserType;
+}

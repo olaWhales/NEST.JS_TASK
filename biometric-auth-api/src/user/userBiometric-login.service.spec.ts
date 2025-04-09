@@ -3,6 +3,7 @@ import { BiometricLoginService } from './UserBiometricLogin.service';
 import { PrismaClient } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
+import { BiometricLoginInput } from './dto/biometric-login.input'; // Import BiometricLoginInput
 
 jest.mock('@prisma/client', () => {
   return {
@@ -45,7 +46,8 @@ describe('BiometricLoginService', () => {
     const mockUser = { id: '1', email: 'test@example.com', biometricKey: 'valid-key' };
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
-    const result = await service.biometricLogin('valid-key');
+    const input: BiometricLoginInput = { biometricKey: 'valid-key' };
+    const result = await service.biometricLogin(input);
 
     expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { biometricKey: 'valid-key' } });
     expect(jwtService.sign).toHaveBeenCalledWith({ userId: '1' });
@@ -55,6 +57,7 @@ describe('BiometricLoginService', () => {
   it('should throw an error if biometric key is invalid', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-    await expect(service.biometricLogin('invalid-key')).rejects.toThrow(UnauthorizedException);
+    const input: BiometricLoginInput = { biometricKey: 'invalid-key' };
+    await expect(service.biometricLogin(input)).rejects.toThrow(UnauthorizedException);
   });
 });
