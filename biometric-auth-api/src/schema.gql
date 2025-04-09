@@ -2,9 +2,10 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type UserResponse {
+type UserType {
   id: String!
   email: String!
+  name: String
   biometricKey: String
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -15,37 +16,19 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type AuthPayload {
+  token: String!
+  user: UserType!
+}
+
 type Query {
   hello: String!
 }
 
-type User {
-  id: ID!
-  email: String!
-  biometricKey: String
-  createdAt: String!
-  updatedAt: String!
-}
-
-type RegisterResponse {
-  message: String!
-  user: User!
-}
-
-type LoginResponse {
-  token: String!
-  user: User!
-}
-
 type Mutation {
-  register(data: CreateUserInput!): RegisterResponse!
-  login(data: LoginUserInput!): String!
-  biometricLogin(data: BiometricLoginInput!): String!
-}
-
-input CreateUserInput {
-  email: String!
-  password: String!
+  login(data: LoginUserInput!): AuthPayload!
+  biometricLogin(data: BiometricLoginInput!): AuthPayload!
+  register(data: CreateUserInput!): AuthPayload!
 }
 
 input LoginUserInput {
@@ -55,4 +38,9 @@ input LoginUserInput {
 
 input BiometricLoginInput {
   biometricKey: String!
+}
+
+input CreateUserInput {
+  email: String!
+  password: String!
 }

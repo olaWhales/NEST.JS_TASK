@@ -3,9 +3,9 @@ import { UserType } from './user.type';
 
 @ObjectType()
 export class AuthPayload {
-  @Field()
-  token: string | undefined;
+  @Field(() => String) // Explicitly specify the type as String
+  token!: string;
 
-  @Field(() => UserType)
-  user: UserType | undefined;
+  @Field(() => UserType) // Explicitly specify the type as UserType
+  user!: UserType;
 }

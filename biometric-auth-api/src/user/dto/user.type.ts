@@ -2,18 +2,21 @@ import { ObjectType, Field, ID } from '@nestjs/graphql';
 
 @ObjectType()
 export class UserType {
-  @Field(() => ID)
-  id: string | undefined;
+  @Field(() => String) // Explicitly specify the type as String
+  id!: string;
 
-  @Field()
-  email: string | undefined;
+  @Field(() => String) // Explicitly specify the type as String
+  email!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true }) // Optional field
+  name?: string;
+
+  @Field(() => String, { nullable: true }) // Explicitly specify the type as String
   biometricKey?: string;
 
-  @Field()
-  createdAt: Date | undefined;
+  @Field(() => Date) // Explicitly specify the type as Date
+  createdAt!: Date;
 
-  @Field()
-  updatedAt: Date | undefined;
+  @Field(() => Date) // Explicitly specify the type as Date
+  updatedAt!: Date;
 }
