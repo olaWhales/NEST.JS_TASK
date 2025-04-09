@@ -1,5 +1,5 @@
 import { ObjectType, Field } from '@nestjs/graphql';
-import { User } from '../entities/user.entity';
+import { User } from '../../user/user.entity'; 
 
 @ObjectType()
 export class UserResponse {
@@ -10,5 +10,5 @@ export class UserResponse {
   user?: User;
 
   @Field({ nullable: true })
-  token?: string; // Add this field
+  token?: string;
 }
