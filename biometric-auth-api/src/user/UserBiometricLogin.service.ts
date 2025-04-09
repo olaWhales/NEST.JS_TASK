@@ -22,6 +22,7 @@ export class BiometricLoginService {
 
     const token = this.jwtService.sign({ userId: user.id });
 
+    // Exclude password from the user object
     const { password: _, ...userWithoutPassword } = user;
 
     return {
