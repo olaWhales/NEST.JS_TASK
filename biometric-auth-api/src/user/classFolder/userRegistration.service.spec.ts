@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RegistrationService } from './UserRegistration.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserInput } from './dto/create-user.input';
-import { UserResponse } from './dto/user.response';
+import { RegistrationService } from '../UserRegistration.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateUserInput } from '../dto/create-user.input';
+import { UserResponse } from '../dto/user.response';
 import * as bcrypt from 'bcrypt';
 
 // Mock the bcrypt module

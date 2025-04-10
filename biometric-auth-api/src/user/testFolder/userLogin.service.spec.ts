@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LoginService } from './UserLogin.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { LoginService } from '../classFolder/UserLogin.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { LoginInput } from './dto/login.input';
-import { UserResponse } from './dto/user.response';
+import { LoginInput } from '../dto/login.input';
+import { UserResponse } from '../dto/user.response';
 import * as bcrypt from 'bcrypt';
 
 // Mock the bcrypt module

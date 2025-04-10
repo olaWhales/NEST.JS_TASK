@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RegistrationService } from './UserRegistration.service';
-import { LoginService } from './UserLogin.service';
-import { BiometricLoginService } from './UserBiometricLogin.service';
+import { LoginService } from './classFolder/UserLogin.service';
+import { BiometricLoginService } from './classFolder/UserBiometricLogin.service';
 import { UserResolver } from './user.resolver';
 import { PrismaModule } from '../PrismaModule';
 

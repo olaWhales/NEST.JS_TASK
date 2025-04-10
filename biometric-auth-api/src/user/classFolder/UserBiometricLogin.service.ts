@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { BiometricLoginInput } from './dto/biometric-login.input';
-import { UserResponse } from './dto/user.response';
+import { BiometricLoginInput } from '../dto/biometric-login.input';
+import { UserResponse } from '../dto/user.response';
 
 @Injectable()
 export class BiometricLoginService {

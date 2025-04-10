@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BiometricLoginService } from './UserBiometricLogin.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { BiometricLoginService } from '../classFolder/UserBiometricLogin.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { BiometricLoginInput } from './dto/biometric-login.input';
-import { UserResponse } from './dto/user.response';
+import { BiometricLoginInput } from '../dto/biometric-login.input';
+import { UserResponse } from '../dto/user.response';
 
 describe('BiometricLoginService', () => {
   let biometricLoginService: BiometricLoginService;
